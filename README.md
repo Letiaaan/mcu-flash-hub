@@ -117,7 +117,6 @@
 - [使用说明、参数和数据位置](docs/USAGE.md)
 - [参数接口依据](docs/configuration-sources.md)
 - [51 / 8051 接线方式与工具选择](docs/8051.md)
-- [如何制作这样的 GitHub README](docs/GITHUB.md)
 - [第三方许可与分发说明](THIRD_PARTY.md)
 
 反馈兼容性问题时，请提供芯片完整料号、烧录器型号、工具版本和可公开的日志。新增芯片应同时补充参数、地址规则、失败处理与测试记录。
