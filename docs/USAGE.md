@@ -4,11 +4,17 @@ Windows 桌面开发预览版 v0.3.0。统一界面调用成熟烧录工具，�
 
 ## 启动
 
-双击根目录的 `启动工作台.cmd`，或运行 `dist/FlashDesk/FlashDesk.exe`。发行目录可以整体移动到其他 Windows x64 电脑，无需另装 Python。请保留 `_internal`、`third-party` 等所有目录，不要单独复制 EXE。
+**程序版**：从 GitHub Releases 下载完整 Windows ZIP，解压后运行 `FlashDesk/FlashDesk.exe`。本机构建的对应目录为 `dist/FlashDesk/`，可以整体移动到其他 Windows x64 电脑，无需另装 Python。请保留 `_internal`、`third-party` 等所有目录，不要单独复制 EXE。
+
+**源码版**：Git clone、GitHub 的 `Code → Download ZIP` 不包含 `dist/` 和 `.venv/`。先安装 64 位 Python 3.11（推荐，也可由启动脚本识别 3.12 / 3.13），然后双击 `启动工作台.cmd`。它会在本目录建立独立环境并安装运行依赖，首次需要联网。已有完整 EXE 时仍优先打开 EXE；追加 `-Source` 可强制使用源码，`-CheckOnly` 只检查 / 准备源码环境，不打开界面或连接硬件。
+
+源代码运行时控制台会保留，发生错误不会静默消失，详情记录在根目录 `startup.log`（不提交 Git）。若缺少系统 Python，启动器会提供官方下载地址；网络下载失败则修复网络后重试。手动初始化命令：`powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\setup.ps1`，这只对本次脚本执行放行，不修改系统执行策略。
+
+下载过慢时可自行指定 HTTPS 软件源，例如 `& '.\启动工作台.cmd' -Source -IndexUrl https://pypi.tuna.tsinghua.edu.cn/simple`。也可在 `setup.ps1` 后追加同样的 `-IndexUrl` 参数。不会自动修改系统 pip 配置或切换第三方镜像。
 
 默认打开「虚拟演练」。点击「演练固件」，再点击「开始虚拟演练」即可体验。还可选择连接失败、校验失败、无响应场景；测试超时时可将超时设为 5 秒。示例固件只是测试字节，**没有可执行功能，不应写入实物**。
 
-开发运行：安装 Python 3.11，然后运行 `./setup.ps1`，再执行 `./.venv/Scripts/python.exe main.py`。构建：`./build.ps1`。测试：`./.venv/Scripts/python.exe -m pytest -q`。依赖版本记录在 `requirements-lock.txt`。
+开发运行：执行 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\setup.ps1 -Dev` 安装测试和打包依赖，再执行 `./.venv/Scripts/python.exe main.py`。构建：`./build.ps1`。测试：`./.venv/Scripts/python.exe -m pytest -q`。依赖版本记录在 `requirements-lock.txt`；运行时直接依赖锁定在 `pyproject.toml`。
 
 ## 芯片范围
 

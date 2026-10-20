@@ -1,12 +1,11 @@
 @echo off
+setlocal
 cd /d "%~dp0"
-if exist "dist\FlashDesk\FlashDesk.exe" (
-    start "" "dist\FlashDesk\FlashDesk.exe"
-    exit /b
-)
-if not exist ".venv\Scripts\pythonw.exe" (
-    echo Please run setup.ps1 first.
-    pause
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\start.ps1" %*
+if errorlevel 1 (
+    echo.
+    echo FlashDesk could not start. See startup.log in this folder.
+    if not defined FLASHDESK_NO_PAUSE pause
     exit /b 1
 )
-start "" ".venv\Scripts\pythonw.exe" "main.py"
+exit /b 0

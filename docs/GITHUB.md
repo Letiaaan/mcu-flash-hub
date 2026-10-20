@@ -50,6 +50,17 @@
 4. 检查 GitHub 首页上的相对图片和文档链接。仓库有地址后，再加入真实的 Release 下载地址和动态徽章。
 5. 可执行程序适合在 GitHub Releases 发布完整目录的 ZIP；不要只上传一个依赖文件不全的 EXE，也不要把开发虚拟环境当成源码提交。
 
+## 给普通用户发布 Windows 程序
+
+源码仓库没有 `dist/` 是正常的。源码更新通过 GitHub Desktop 的 Commit / Push 发布；可直接运行的程序通过 Releases 单独发布，二者分别更新。
+
+1. 本机构建并完成测试后，把整个 `dist/FlashDesk/` 文件夹压缩成 `FlashDesk-v0.3.0-windows-x64.zip`，保留里面的 `_internal`、`examples`、`third-party`、文档等配套文件。
+2. 打开 GitHub 仓库 → 右侧 **Releases** → **Create a new release**，创建对应版本标签，填写更新内容。
+3. 将程序 ZIP 拖到附件区域，再发布 Release。GitHub 自动生成的 `Source code (zip)` / `Source code (tar.gz)` 仍是源码，不是程序。
+4. 用户选择你上传的 Windows ZIP，解压运行 `FlashDesk.exe`。只想使用软件的人无需安装 Python；开发者克隆源码后通过 `启动工作台.cmd` 初始化依赖。
+
+准备 Release 不需要取消 `.gitignore` 对 `dist/` 的忽略。修改过的启动脚本和 README 需要 Commit 并 Push，远端克隆者才能获得修复。
+
 根目录 `THIRD_PARTY.md` 记录了第三方依赖许可。本项目自身的 LICENSE 尚未选定；发布前应选定与实际分发方式、GPL / LGPL 等依赖义务相容的许可并提供相应材料。这与首页排版是独立事项。
 
 GitHub 会使用自己的样式与净化规则；README 不依赖自定义 JavaScript、样式表或页面服务。本地预览用于查看排版，最后仍以 GitHub 实际渲染为准。

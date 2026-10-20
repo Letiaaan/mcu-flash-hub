@@ -6,7 +6,7 @@
 
 Windows x64 / Python 3.11.9 / PySide6 6.8.3 / esptool 5.1.0 / stcgal 1.10 / PyInstaller 6.16.0。
 
-最终 EXE 构建后执行 `./.venv/Scripts/python.exe -m pytest -q --junitxml=docs/test-results.xml`：**350 passed，0 failed，0 skipped**，耗时 121.4 秒。发行包测试实际执行，未跳过。原始记录见 `test-results.xml`。
+最终 EXE 构建后执行 `./.venv/Scripts/python.exe -m pytest -q --junitxml=docs/test-results.xml`：**352 passed，0 failed，0 skipped**，耗时 108.8 秒。发行包测试实际执行，未跳过。原始记录见 `test-results.xml`。
 
 | 测试组 | 数量 | 范围 |
 |---|---:|---|
@@ -19,6 +19,7 @@ Windows x64 / Python 3.11.9 / PySide6 6.8.3 / esptool 5.1.0 / stcgal 1.10 / PyIn
 | 进程管理 | 40 | 全部配置虚拟写入、失败、超时、取消与重试、双文件指纹检查相关路径、报告、无串口 CLI 失败 |
 | 真实 esptool / 虚拟 ROM | 3 | SLIP、写入、MD5、损坏数据与错误芯片 |
 | 实际发行包 | 11 | 内置工具、真实 esptool 协议、子进程故障与取消、覆盖 7 类工具 / 10 个代表配置、EEPROM、STC89 / 15 / 8 选项的界面自检 |
+| 干净源码首次启动 | 2 | 无 EXE / 无虚拟环境的中文及空格目录，从零安装依赖、Qt 和 10 配置界面自检、再次启动复用环境、安装错误及日志 |
 
 对应 EXE SHA-256：`508961d19b56576e9b41fee095f0b14bbc769c6fddf578f9c10be5266fd444b8`。结构化记录在 `release.json`。
 
@@ -45,6 +46,12 @@ v0.2.1 加入各页及分组重置：基本页恢复时清空文件 / 端口并�
 经典 ESP32 额外使用真实 esptool，通过本地 TCP 与有限 ROM 协议替身通信。既有协议用例和新增的程序生成配置命令都实际执行。测试使用 no-stub / no-reset 模式，覆盖 SLIP、握手、块写入与 MD5；不覆盖 RAM stub、USB、硬件复位、CPU 指令执行、Flash 时序或固件运行，也不能推定 C3 / S3 已通过协议验收。
 
 实际发行包的 `--self-test` 会启动完整 Qt 界面，覆盖 7 类工具的 10 个代表配置，含 AT89S、AT89C、STC89 / 15 / 8、EEPROM 和 STC 硬件项，输出 JSON 与各配置页截图。自检执行的是内置虚拟子进程，不是外部烧录 CLI。普通流程不访问真实串口，生产界面拒绝网络串口输入。
+
+## 源码首次启动
+
+源码启动用例使用不含 `.venv` / `dist` 的独立副本，目录包含中文、空格及 `&`。通过实际 CMD / Windows PowerShell 5.1 启动器创建新虚拟环境、经 pip 安装依赖，再用新解释器完成 Qt 界面与 10 个配置的虚拟自检；第二次检查复用已有环境。失败用例验证错误退出码、控制台提示及 `startup.log` 中的安装详情，不依赖开发目录的 EXE 或虚拟环境。
+
+首次安装需要系统 Python 和可访问的软件源。默认 PyPI 下载曾发生超时；本次成功测试显式使用 `PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple`。启动器允许用户自行通过 `-IndexUrl` 选择 HTTPS 软件源，不自动切换或修改系统 pip 配置。源码测试只覆盖本机 Python 3.11；启动脚本接受的 3.12 / 3.13 未逐版本验证。
 
 ## 尚待完成
 

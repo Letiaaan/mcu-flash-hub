@@ -65,7 +65,9 @@
 
 ### Windows 程序
 
-使用完整的构建目录，运行 `FlashDesk.exe`；在本项目工作目录中也可双击 `启动工作台.cmd`。不要只复制 EXE，需保留 `_internal`、`examples`、`third-party` 等配套目录。
+免安装使用应下载 GitHub **Releases 中的 Windows 程序 ZIP**，解压后运行 `FlashDesk/FlashDesk.exe`。`Code → Download ZIP` 和 Git clone 下载的是源码，不包含 EXE。若当前 Releases 尚未提供 Windows ZIP，请使用下面的源码启动方式。
+
+本机构建的完整程序位于 `dist/FlashDesk/`。不要只复制 EXE，需保留 `_internal`、`examples`、`third-party` 等配套目录。`dist/` 和 `.venv/` 被 `.gitignore` 排除是正常的，不应为修复启动问题将它们加入源码仓库。
 
 第一次使用：保持「虚拟演练」勾选，点击「演练固件」，再点击「开始虚拟演练」。示例是测试数据，没有可执行功能，不应写入实物。
 
@@ -73,12 +75,18 @@
 
 ### 从源码运行
 
-需要 Windows x64 和 Python 3.11，在项目根目录执行：
+需要 Windows x64、64 位 Python 3.11（推荐，启动脚本也接受 3.12 / 3.13）。首次运行需要联网下载依赖。克隆或下载源码后，双击根目录的 **`启动工作台.cmd`**：没有 EXE 时会检查环境、自动创建 `.venv` 并安装运行依赖，然后打开界面。源码运行期间保留控制台窗口，错误会显示在窗口中并记录到本地 `startup.log`。
+
+也可以在项目根目录手动执行：
 
 ```powershell
-./setup.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\setup.ps1
 ./.venv/Scripts/python.exe main.py
 ```
+
+没有 Python 时，启动器会提供下载地址；它不会自动安装系统 Python。依赖下载失败可修复网络后重新双击启动。纯环境检查可执行 `启动工作台.cmd -CheckOnly`，已有 EXE 但要检查源码时使用 `启动工作台.cmd -Source`。
+
+若 PyPI 下载过慢，可自行选择 HTTPS 镜像，例如在 PowerShell 执行 `& '.\启动工作台.cmd' -Source -IndexUrl https://pypi.tuna.tsinghua.edu.cn/simple` 使用清华镜像；默认使用 pip 自身配置，不自动切换软件源。
 
 ## 重置规则
 
@@ -95,6 +103,9 @@
 ## 开发与测试
 
 ```powershell
+# 安装开发依赖（测试、打包工具）
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\setup.ps1 -Dev
+
 # 构建 Windows 程序
 ./build.ps1
 
