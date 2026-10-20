@@ -67,12 +67,14 @@ def test_packaged_child_cancellation(app, binary, tmp_path, monkeypatch):
 
 def test_actual_packaged_gui_and_child(tmp_path):
     proc = subprocess.run([str(EXE), "--self-test", str(tmp_path)], stdout=subprocess.PIPE,
-                          stderr=subprocess.STDOUT, encoding="utf-8", errors="replace", timeout=20)
+                          stderr=subprocess.STDOUT, encoding="utf-8", errors="replace", timeout=60)
     assert proc.returncode == 0, proc.stdout
     result = json.loads((tmp_path / "self-test.json").read_text(encoding="utf-8"))
     assert result["passed"] is True and result["mode"] == "virtual"
-    assert len(result["runs"]) == 4
-    stc = result["runs"][-1]
+    assert len(result["runs"]) == 10
+    assert {r["plan"]["request"]["profile"]["tool"] for r in result["runs"]} == {
+        "esptool", "stm32cube", "avrdude", "stcgal", "openocd", "stm32flash", "minipro"}
+    stc = next(r for r in result["runs"] if r["plan"]["request"]["profile"]["id"] == "stc89c52rc")
     assert stc["plan"]["request"]["options"]["cpu_6t_enabled"] == "true"
     assert "EEPROM 内存读回校验通过" in stc["log"]
     assert (tmp_path / "preview.png").stat().st_size > 10000

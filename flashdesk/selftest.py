@@ -10,6 +10,7 @@ def run(output_dir: str) -> int:
     from PySide6.QtGui import QFontDatabase
     from PySide6.QtWidgets import QApplication
     from .app import STYLE, Window
+    from .catalog import PROFILES
 
     output = Path(output_dir).resolve()
     output.mkdir(parents=True, exist_ok=True)
@@ -24,7 +25,10 @@ def run(output_dir: str) -> int:
     results = []
     ee = output / "virtual-eeprom.bin"
     ee.write_bytes(b"FlashDesk virtual EEPROM")
-    for index in (0, 3, 5, 7):
+    ids = ("esp32", "stm32f103c8", "atmega328p", "stc89c52rc", "stc15f2k60s2", "stc8g1k08",
+           "at89s52", "at89c51", "stm32f103c8-openocd", "stm32f103c8-uart")
+    for profile_id in ids:
+        index = next(i for i, p in enumerate(PROFILES) if p.id == profile_id)
         window.profiles.setCurrentRow(index)
         window.load_example()
         window.timeout.setValue(5)
@@ -36,6 +40,9 @@ def run(output_dir: str) -> int:
         if index == 7:
             control = window.config.controls["cpu_6t_enabled"]
             control.setCurrentIndex(control.findData("true"))
+        if profile_id in ("stc15f2k60s2", "stc8g1k08"):
+            control = window.config.controls["watchdog_por_enabled"]
+            control.setCurrentIndex(control.findData("false"))
         loop = QEventLoop()
         window.runner.finished.connect(loop.quit)
         window.start()
@@ -48,8 +55,11 @@ def run(output_dir: str) -> int:
         if index == 0:
             window.grab().save(str(output / "preview.png"))
         window.tabs.setCurrentIndex(1)
+        if profile_id.startswith("stc") or profile_id.startswith("at89"):
+            window.family_filter.setCurrentIndex(window.family_filter.findData("8051"))
         app.processEvents()
         window.grab().save(str(output / f"preview-{window.profile.id}.png"))
+        window.family_filter.setCurrentIndex(0)
         window.tabs.setCurrentIndex(0)
     success = all(r.get("result") == "success" and r.get("mode") == "virtual" and
                   "内存读回校验通过" in r.get("log", "") for r in results)

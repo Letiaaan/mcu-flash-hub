@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 )
 from serial.tools import list_ports
 
-from .catalog import BY_ID, PROFILES, TOOL_LABELS, TOOL_URLS
+from .catalog import BY_ID, PROFILES, TOOL_LABELS, TOOL_URLS, is_8051
 from .core import Request, ValidationError, inspect_firmware, make_plan, tool_command
 from .runner import Runner, data_dir
 from .config_widget import ConfigWidget
@@ -89,10 +89,10 @@ class SettingsDialog(QDialog):
     def __init__(self, overrides, parent=None):
         super().__init__(parent)
         self.setWindowTitle("烧录工具设置")
-        self.resize(740, 390)
+        self.resize(820, 600)
         layout = QVBoxLayout(self)
-        layout.addWidget(label("ESP 与 STC 工具已集成。STM32 / AVR 请选择官方安装目录中的 EXE。", wrap=True))
-        layout.addWidget(label("留空时自动查找；AVRDUDE 的配置文件和 DLL 请保留在工具原目录。", "muted", True))
+        layout.addWidget(label("esptool 与 stcgal 已集成；其余工具需单独安装并选择 EXE。", wrap=True))
+        layout.addWidget(label("留空时自动查找。请保留外部工具的配置、数据库、DLL 和 scripts 目录；AT89S 需 AVRDUDE 8.1+。", "muted", True))
         self.edits = {}
         self.reset_buttons = {}
         form = QFormLayout()
@@ -114,8 +114,12 @@ class SettingsDialog(QDialog):
             row.addWidget(docs)
             form.addRow(name, row)
             self.edits[key] = edit
-        layout.addLayout(form)
-        layout.addStretch()
+        content = QWidget()
+        content.setLayout(form)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(content)
+        layout.addWidget(scroll, 1)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
@@ -167,6 +171,11 @@ class Window(QMainWindow):
         self.search.setPlaceholderText("查找芯片 / 厂商")
         self.search.textChanged.connect(self.filter_profiles)
         side.addWidget(self.search)
+        self.family_filter = QComboBox()
+        for title, value in (("全部系列", "all"), ("51 / 8051", "8051"), ("STM32", "stm32"), ("AVR", "avr"), ("ESP", "esp")):
+            self.family_filter.addItem(title, value)
+        self.family_filter.currentIndexChanged.connect(self.filter_profiles)
+        side.addWidget(self.family_filter)
         self.profiles = QListWidget()
         for p in PROFILES:
             item = QListWidgetItem(f"{p.name}\n{p.family}")
@@ -180,7 +189,7 @@ class Window(QMainWindow):
         history = QPushButton("打开任务记录")
         history.clicked.connect(self.open_history)
         side.addWidget(history)
-        side.addWidget(label(f"v{__version__}   /   Windows\n8 个芯片配置 · 4 个工具", "muted"))
+        side.addWidget(label(f"v{__version__}   /   Windows\n{len(PROFILES)} 个烧录配置 · {len(TOOL_LABELS)} 个工具", "muted"))
         outer.addWidget(sidebar)
 
         main = QVBoxLayout()
@@ -256,7 +265,7 @@ class Window(QMainWindow):
         serial_layout.addLayout(row)
         form.addRow("串口", self.serial_row)
         self.file = QLineEdit()
-        self.file.setPlaceholderText("选择工程生成的 .bin / .hex 固件")
+        self.file.setPlaceholderText("选择 .bin / .hex / .ihx 固件")
         browse = QPushButton("选择固件")
         browse.clicked.connect(self.browse_firmware)
         self.example_button = QPushButton("演练固件")
@@ -367,10 +376,15 @@ class Window(QMainWindow):
     def invalidate_preview(self, *_):
         self.command.clear()
 
-    def filter_profiles(self, value):
+    def filter_profiles(self, *_):
+        value = self.search.text().strip().lower()
+        family = self.family_filter.currentData()
         for i in range(self.profiles.count()):
             item = self.profiles.item(i)
-            item.setHidden(value.lower() not in item.text().lower())
+            profile = BY_ID[item.data(Qt.ItemDataRole.UserRole)]
+            matches = {"all": True, "8051": is_8051(profile), "stm32": profile.chip.startswith("STM32"),
+                       "avr": profile.family == "Microchip AVR", "esp": profile.tool == "esptool"}[family]
+            item.setHidden(not matches or value not in (item.text() + " " + TOOL_LABELS[profile.tool]).lower())
 
     def select_profile(self, item, previous=None):
         if item is None:
@@ -466,6 +480,7 @@ class Window(QMainWindow):
         try:
             index = next(i for i, p in enumerate(PROFILES) if p.id == data["profile_id"])
             self.search.clear()
+            self.family_filter.setCurrentIndex(0)
             with QSignalBlocker(self.profiles):
                 self.profiles.setCurrentRow(index)
             self.select_profile(self.profiles.item(index))
@@ -541,13 +556,13 @@ class Window(QMainWindow):
         self.port.setPlaceholderText("未检测到串口，可手动输入 COM3")
 
     def browse_firmware(self):
-        path, _ = QFileDialog.getOpenFileName(self, "选择固件", "", "固件文件 (*.bin *.hex);;所有文件 (*)")
+        path, _ = QFileDialog.getOpenFileName(self, "选择固件", "", "固件文件 (*.bin *.hex *.ihx *.ihex);;所有文件 (*)")
         if path:
             self.file.setText(path)
             self.file_changed()
 
     def browse_eeprom(self):
-        path, _ = QFileDialog.getOpenFileName(self, "选择 EEPROM 数据", "", "EEPROM 数据 (*.bin *.hex)")
+        path, _ = QFileDialog.getOpenFileName(self, "选择 EEPROM 数据", "", "EEPROM 数据 (*.bin *.hex *.ihx *.ihex)")
         if path:
             self.eeprom.setText(path)
 
@@ -557,8 +572,8 @@ class Window(QMainWindow):
         self.file_changed()
 
     def file_changed(self, silent=False):
-        is_hex = Path(self.file.text()).suffix.lower() == ".hex"
-        self.address.setEnabled(not is_hex and self.profile.tool not in ("avrdude", "stcgal"))
+        is_hex = Path(self.file.text()).suffix.lower() in (".hex", ".ihx", ".ihex")
+        self.address.setEnabled(not is_hex and self.profile.tool not in ("avrdude", "stcgal", "minipro"))
         if not self.file.text().strip():
             self.fw_info.setText("选择文件后显示大小、地址范围和 SHA-256。")
             return

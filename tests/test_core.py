@@ -16,6 +16,8 @@ def test_bin_plan_keeps_path_one_argument_and_enables_verification(profile, bina
     if profile.tool == "avrdude":
         assert plan.argv[-1] == f"flash:w:{fw.path}:r"
         assert "-V" not in plan.argv and "-F" not in plan.argv
+    elif profile.tool == "openocd":
+        assert "{" + binary.resolve().as_posix() + "}" in plan.argv[-1]
     else:
         assert fw.path in plan.argv
     if profile.tool == "stm32cube":

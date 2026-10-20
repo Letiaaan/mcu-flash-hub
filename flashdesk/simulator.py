@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 
 from .catalog import BY_ID
-from .options import STC_HARDWARE, flash_capacity, normalize_options
+from .options import stc_hardware, stc_option_registers, flash_capacity, normalize_options
 
 
 def image_segments(firmware, bin_address):
@@ -54,14 +54,15 @@ def run(payload: str) -> int:
     print(f"[虚拟设备] 已连接 {profile.name}，载入固件。", flush=True)
     print("[虚拟设备] 配置：" + json.dumps(opts, ensure_ascii=False, sort_keys=True), flush=True)
     if profile.tool == "stcgal":
-        from stcgal.options import Stc89Option
-        registers = Stc89Option(0xFF)
-        for option in STC_HARDWARE:
+        registers = stc_option_registers(profile)
+        for option in stc_hardware(profile):
             if opts[option.key] != "keep":
                 registers.set_option(option.key, opts[option.key])
-        print(f"[虚拟设备] STC89 配置寄存器模型：0x{registers.get_msr():02X}（不是实物读回）", flush=True)
+        msr = registers.get_msr()
+        value = f"{msr:02X}" if isinstance(msr, int) else bytes(msr).hex().upper()
+        print(f"[虚拟设备] STC 配置寄存器模型：0x{value}（不是实物读回）", flush=True)
     if profile.tool == "avrdude":
-        programmed = {key: opts[key] for key in ("lfuse", "hfuse", "efuse") if opts[key]}
+        programmed = {key: opts[key] for key in ("lfuse", "hfuse", "efuse") if opts.get(key)}
         if programmed:
             print("[虚拟设备] 熔丝字节模型：" + json.dumps(programmed), flush=True)
     for percent in (10, 35, 65, 90, 100):

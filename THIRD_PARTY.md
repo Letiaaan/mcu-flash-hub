@@ -11,6 +11,9 @@
 | IntelHex | 2.3.0 | https://github.com/python-intelhex/intelhex / BSD |
 | STM32CubeProgrammer | 用户安装 | https://www.st.com/en/development-tools/stm32cubeprog.html / ST 官方协议；本包不分发 |
 | AVRDUDE | 用户安装 | https://github.com/avrdudes/avrdude / GPL；本包不分发 |
+| OpenOCD | 用户安装，适配 0.12.x | https://openocd.org/ / GPL-2.0-or-later；本包不分发 |
+| stm32flash | 用户安装 | https://sourceforge.net/projects/stm32flash/ / GPL-2.0-or-later；本包不分发 |
+| MiniPro CLI | 用户安装 | https://gitlab.com/DavidGriffith/minipro/ / GPL-3.0-or-later；本包不分发 |
 
 依赖的完整版本、来源与许可文本见发行目录 `third-party/`。`sources/` 保存本版未修改的 esptool 和 stcgal Python 源码，项目工作目录包含 FlashDesk 源码和打包脚本。Qt DLL 保存在独立目录中，可替换兼容版本；没有使用单文件封装。不要只复制 EXE，应保留完整目录及许可材料。
 

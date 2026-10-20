@@ -1,6 +1,6 @@
 # FlashDesk 单片机烧录工作台
 
-Windows 桌面开发预览版 v0.2.1。统一界面调用成熟烧录工具，按所选芯片显示配置，提供工程方案、分区重置与独立虚拟演练。**本版完成软件与有限协议验收，未经过实物芯片验收。**
+Windows 桌面开发预览版 v0.3.0。统一界面调用成熟烧录工具，按所选芯片显示配置，提供工程方案、分区重置与独立虚拟演练。**本版完成软件与有限协议验收，未经过实物芯片验收。**
 
 ## 启动
 
@@ -14,12 +14,18 @@ Windows 桌面开发预览版 v0.2.1。统一界面调用成熟烧录工具，�
 
 | 芯片配置 | 后端 | 接线 / 前提 | 当前验收 |
 |---|---|---|---|
-| ESP32 / ESP32-C3 / ESP32-S3 | 内置 esptool 5.1.0 | UART 或 USB 串口，正确进入下载模式 | 命令、虚拟流程；经典 ESP32 额外完成真实 esptool 对虚拟 ROM 的协议测试 |
+| ESP8266 / ESP32 / C3 / S3 / C6 | 内置 esptool 5.1.0 | UART 或 USB 串口，正确进入下载模式 | 命令、虚拟流程；经典 ESP32 额外完成真实 esptool 对虚拟 ROM 的协议测试 |
 | STM32F103C8 / STM32F401CC | STM32CubeProgrammer CLI | 自行安装 ST 工具及驱动，SWD / JTAG / UART / DFU | 命令生成、地址检查、虚拟流程；未运行 ST CLI，也未验收实物 |
-| ATmega328P / ATmega2560 | AVRDUDE | 自行安装 AVRDUDE 及驱动，ISP 或 Arduino Bootloader | 命令生成、地址检查、虚拟流程；未运行 AVRDUDE，也未验收实物 |
-| STC89C52RC | 内置 stcgal 1.10 | USB 转串口，启动任务后给芯片冷上电 | 命令、真实 CLI 无端口失败处理、虚拟流程；未验收 STC 协议与实物 |
+| ATmega8 / 16 / 32 / 328P / 2560、ATtiny85 | AVRDUDE | 自行安装 AVRDUDE 及驱动，ISP；328P / 2560 另有 Arduino Bootloader | 命令生成、地址检查、虚拟流程；未运行 AVRDUDE，也未验收实物 |
+| STC89 / 90 / 12 / 15 / 8 / 8G，共 10 个具体型号 | 内置 stcgal 1.10 | USB 转串口，启动任务后给芯片冷上电 | 上游配置 setter / getter、命令和虚拟流程；STC8G 为实验性支持，未验收协议与实物 |
+| AT89S51 / AT89S52 | AVRDUDE 8.1+ | 支持 8051 正极性 RST 的 ISP 编程器，不是普通 USB-TTL | 命令与虚拟流程；无 AVR 熔丝，未执行外部 CLI |
+| AT89C51 / AT89C52 | MiniPro CLI | 支持器件的并行编程器、芯片座和封装转接座 | 命令与虚拟流程；未执行外部 CLI |
+| STM32F103C8 / F401CC / F407VG | OpenOCD 0.12.x | 完整工具及 scripts、ST-LINK / CMSIS-DAP | 命令与虚拟流程；未执行外部 CLI |
+| STM32F103C8 / F401CC | stm32flash | UART 系统 Bootloader，手动设置 BOOT0 / 复位，本版仅 BIN | 命令与虚拟流程；未执行外部 CLI |
 
 配置代表本版预设，不是已经认证的硬件清单。本版没有实现读保护、STM32 Option Bytes、OTP、AVR 锁定位、量产多工位，也不自动安装 USB 驱动。
+
+完整 32 个烧录配置见 [SUPPORT.md](SUPPORT.md)，其中 14 个为 51 / 8051 配置。左侧分类可与芯片 / 工具搜索组合使用。[51 初学者说明](8051.md) 区分 STC、AT89S 和 AT89C 的连接与下载方式。
 
 ## 动态配置与工程方案
 
@@ -31,6 +37,10 @@ Windows 桌面开发预览版 v0.2.1。统一界面调用成熟烧录工具，�
 | STM32CubeProgrammer | SWD / JTAG / UART（F401CC 另有 DFU），调试频率、连接模式、复位方式、探针序列号 / 索引、UART 校验位、DFU 编号、写后校验、ST-LINK 写后复位、全片擦除 |
 | AVRDUDE | USBasp / USBtinyISP / AVRISP mkII / 对应 Arduino Bootloader，ISP 位时钟、自动擦除策略、写后校验、详细日志、低 / 高 / 扩展熔丝字节 |
 | stcgal STC89 | 冷启动握手速度、自动电源复位及 DTR / RTS、详细日志；全部 7 项后端硬件选项：6T、下载引脚检测、EEPROM 擦除、时钟增益、ALE、内部 XRAM、上电看门狗 |
+| stcgal STC12 / 15 / 8 | 按协议提供复位、时钟、看门狗、低压复位、EEPROM 擦除、下载引脚条件；STC15+ 另有可选 RC 校准频率。不开放动态重分区 |
+| OpenOCD | ST-LINK HLA / CMSIS-DAP、频率、探针序列号、写后校验和复位；仅固定目标脚本 |
+| stm32flash | 8e1 / 8n1、失败写入重试、固件涉及页擦除 / 不擦除、校验、完成后从 Flash 基址启动 |
+| MiniPro | DIP40 / PLCC44 / TQFP44 数据库名称、短固件、写后校验；默认保留 ID 检查 |
 
 STC 硬件项默认「保持芯片原值」；AVR 熔丝留空保持。官方 STC 工具的「仅断电才能停看门狗」、添加 ID 等不在 stcgal 1.10 的这组硬件接口中，界面已说明。上电看门狗与「仅断电才能停」不是同一个设置。
 
@@ -56,10 +66,12 @@ STC 硬件选项的初始值是「保持芯片原值」，AVR 熔丝初始为空
 
 ## 真实烧录
 
-1. 左侧选择芯片。在「工具设置」中为 STM32 / AVR 选择官方工具的 EXE；AVRDUDE 的配置和 DLL 留在原安装目录。ESP / STC 默认使用内置工具，也可指定兼容版本 EXE。
+1. 左侧选择芯片。在「工具设置」中为外部工具选择可在 Windows 运行的 EXE；配置、DLL、数据库和 OpenOCD scripts 留在原安装目录。MiniPro 需自行准备合适的 Windows CLI 构建。ESP / STC 默认使用内置工具，也可指定兼容版本 EXE。
 2. 选择实际构建产物，填写串口、BIN 起始地址；HEX 使用文件中的地址。在芯片配置页调整所需选项，检查大小、SHA-256 和命令预览。
 3. 关闭「虚拟演练」，核对设备后点击「开始真实烧录」。确认窗口提供最终命令和固件指纹。
 4. 根据原始日志检查结果。ESP 通常由工具完成 MD5 校验，STM32 默认使用 `-v`，AVRDUDE 默认校验；若主动关闭校验会显示提示。STC 只有工具内的协议检查，本版不提供独立 Flash 读回校验。底层工具在安全下载等特殊模式中可能跳过某些校验，应以日志为准。
+
+OpenOCD 用 `verify`，stm32flash 用 `-v` 开启校验；MiniPro 恰好相反，默认校验，`-v` 是关闭校验。应用分别生成适用参数。OpenOCD 和 stm32flash 的擦除会清除涉及的整个页 / 扇区，MiniPro 编程可能整片擦除。HEX / IHX 地址不能保证保护同页其他数据。stm32flash 暂只接 BIN；STC 的 HEX / IHX 扩展名必须小写，OpenOCD 的 Intel HEX 文件须用 `.hex`。
 
 ESP32 / C3 默认 4 MB、S3 默认 8 MB，可在芯片配置中按实际模块选择容量；地址检查使用所选容量。ESP 应用 BIN 常见偏移为 `0x10000`，合并镜像、bootloader 的偏移必须以工程烧录清单为准。本版一次写一个文件，不猜测分区或自动拼接镜像。
 
@@ -71,7 +83,7 @@ STM32 和 STC 后端会自动识别目标；本版尚未实现对所选精确料
 
 详见 `docs/acceptance.md`，测试原始结果见 `docs/test-results.xml`。界面截图在 `docs/preview.png`。虚拟模式使用内存模型，不接触串口。经典 ESP32 的协议测试使用独立本地 TCP 服务，真实 esptool 通过 SLIP 协议与其通信；生产界面拒绝网络串口输入。
 
-发行包也可运行 `FlashDesk.exe --self-test <输出目录>`，自动验证四类界面与内置子进程的虚拟写入（含 STC 选项、AVR / STC EEPROM），并输出 JSON 报告和截图。该命令不连接硬件。
+发行包也可运行 `FlashDesk.exe --self-test <输出目录>`，自动验证 7 类工具、10 个代表配置与内置子进程的虚拟写入（含 STC89 / 15 / 8 选项、AVR / STC EEPROM），并输出 JSON 报告和截图。该命令不执行外部烧录工具、不连接硬件。
 
 ## 扩展
 

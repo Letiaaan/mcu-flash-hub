@@ -33,7 +33,7 @@
 <h1 align="center">FlashDesk</h1>
 <p align="center">单片机烧录工作台</p>
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.2.1-175CD3?style=flat-square" alt="Version 0.2.1">
+  <img src="https://img.shields.io/badge/version-0.3.0-175CD3?style=flat-square" alt="Version 0.3.0">
   <img src="https://img.shields.io/badge/status-preview-D69E2E?style=flat-square" alt="Preview">
 </p>
 ```

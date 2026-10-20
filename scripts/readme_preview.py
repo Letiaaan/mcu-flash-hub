@@ -10,6 +10,7 @@ from PySide6.QtGui import QFontDatabase
 from PySide6.QtWidgets import QApplication
 from markdown_it import MarkdownIt
 from flashdesk.app import STYLE, Window
+from flashdesk.catalog import PROFILES
 
 root = Path(__file__).resolve().parents[1]
 images = root / "docs" / "images"
@@ -31,6 +32,7 @@ window.show()
 app.processEvents()
 window.grab().save(str(images / "workbench.png"))
 window.profiles.setCurrentRow(7)
+window.family_filter.setCurrentIndex(window.family_filter.findData("8051"))
 window.tabs.setCurrentIndex(1)
 app.processEvents()
 header = window.config.group_headers["hardware"]
@@ -38,6 +40,13 @@ window.advanced_scroll.ensureWidgetVisible(header, 0, 0)
 window.advanced_scroll.verticalScrollBar().setValue(max(0, header.y() - 12))
 app.processEvents()
 window.grab().save(str(images / "stc-settings.png"))
+window.profiles.setCurrentRow(next(i for i, p in enumerate(PROFILES) if p.id == "stc15f2k60s2"))
+app.processEvents()
+header = window.config.group_headers["hardware"]
+window.advanced_scroll.ensureWidgetVisible(header, 0, 0)
+window.advanced_scroll.verticalScrollBar().setValue(max(0, header.y() - 12))
+app.processEvents()
+window.grab().save(str(images / "stc15-settings.png"))
 window.close()
 
 md = MarkdownIt("commonmark", {"html": True}).enable("table")

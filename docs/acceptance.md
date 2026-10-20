@@ -1,4 +1,4 @@
-# FlashDesk v0.2.1 验收记录
+# FlashDesk v0.3.0 验收记录
 
 日期：2026-10-20。结论：**软件与有限协议验收通过；未进行实物芯片验收。**
 
@@ -6,24 +6,31 @@
 
 Windows x64 / Python 3.11.9 / PySide6 6.8.3 / esptool 5.1.0 / stcgal 1.10 / PyInstaller 6.16.0。
 
-最终 EXE 构建后执行 `./.venv/Scripts/python.exe -m pytest -q --junitxml=docs/test-results.xml`：**152 passed，0 failed，0 skipped**，耗时 46.4 秒。发行包测试实际执行，未跳过。原始记录见 `test-results.xml`。
+最终 EXE 构建后执行 `./.venv/Scripts/python.exe -m pytest -q --junitxml=docs/test-results.xml`：**350 passed，0 failed，0 skipped**，耗时 121.4 秒。发行包测试实际执行，未跳过。原始记录见 `test-results.xml`。
 
 | 测试组 | 数量 | 范围 |
 |---|---:|---|
-| 固件与基础命令 | 40 | 格式、HEX 校验和 / EOF、地址、中文路径、文件变化和参数错误 |
-| 芯片配置与命令适配 | 40 | STC 全部 7 项对照真实后端 setter / getter，Flash 容量、STM32 接口、AVR Bootloader / 熔丝、EEPROM、故障注入与配置后 esptool 协议联调 |
-| 工程方案 | 22 | 8 个配置的往返、相对路径、非法类型 / 未知字段、损坏文件保留、保存更新 |
+| 固件与基础命令 | 108 | 格式、HEX 校验和 / EOF、地址、中文路径、文件变化和参数错误 |
+| 芯片配置与命令适配 | 64 | STC 全部 7 项对照真实后端 setter / getter，Flash 容量、STM32 接口、AVR Bootloader / 熔丝、EEPROM、故障注入与配置后 esptool 协议联调 |
+| 新增型号与外部适配契约 | 31 | STC 型号容量、各协议真实 setter / getter、RC 校准、AT89S 无 AVR 熔丝、老 AVR 熔丝差异、OpenOCD Tcl 路径与地址、stm32flash 范围 / 不擦除顺序、MiniPro 校验 / ID、IHX、系列筛选 |
+| 工程方案 | 46 | 32 个配置的往返、相对路径、非法类型 / 未知字段、损坏文件保留、保存更新 |
 | 界面 | 5 | 动态字段、每芯片草稿、接口切换、保存 / 导入 / 导出、加载不自动执行、恢复默认、EEPROM 和命令预览 |
-| 分区重置 | 15 | 8 个芯片的各分组 / 配置页独立重置、基本页清空、其他芯片草稿和已保存方案保留、任务中禁用、各工具路径独立重置 |
-| 进程管理 | 16 | 全部配置虚拟写入、失败、超时、取消与重试、双文件指纹检查相关路径、报告、无串口 CLI 失败 |
+| 分区重置 | 42 | 32 个配置的各分组 / 配置页独立重置、基本页清空、其他芯片草稿和已保存方案保留、任务中禁用、7 个工具路径独立重置 |
+| 进程管理 | 40 | 全部配置虚拟写入、失败、超时、取消与重试、双文件指纹检查相关路径、报告、无串口 CLI 失败 |
 | 真实 esptool / 虚拟 ROM | 3 | SLIP、写入、MD5、损坏数据与错误芯片 |
-| 实际发行包 | 11 | 内置工具、真实 esptool 协议、子进程故障与取消、四系列界面 + EEPROM + STC 选项的完整自检 |
+| 实际发行包 | 11 | 内置工具、真实 esptool 协议、子进程故障与取消、覆盖 7 类工具 / 10 个代表配置、EEPROM、STC89 / 15 / 8 选项的界面自检 |
 
-对应 EXE SHA-256：`af29966cac42e9eb7d2a28b69d088d956af58bc0aaa09ee3a72287e618583907`。结构化记录在 `release.json`。
+对应 EXE SHA-256：`508961d19b56576e9b41fee095f0b14bbc769c6fddf578f9c10be5266fd444b8`。结构化记录在 `release.json`。
 
 ## 本次补齐的配置
 
-四系列使用独立的配置能力声明，共用界面、导入校验和命令适配；未知或跨后端选项会被拒绝。STC89 的 7 项硬件选项与 stcgal 1.10 的 Stc89Option 集合一致；默认不下发修改。AVR 的三个熔丝字节默认留空。EEPROM 文件单独检查容量与 SHA-256，预览后变化会在启动前被拒绝。
+本版提供 **32 个芯片与工具组合、7 类工具，其中 14 个为 51 / 8051 配置**。完整列表见 `SUPPORT.md`。界面加入系列筛选并与搜索组合。未知或跨后端选项会被拒绝；新增配置继续共用分区重置、工程方案和报告。
+
+STC89 的 7 项硬件选项与 stcgal 1.10 的 Stc89Option 集合一致；STC12 / 15 / 8 按各自上游选项类提供保守子集，全部可选值逐项调用真实 setter / getter 核对，型号容量与上游数据库比对。默认保持原值，RC 校准默认不指定。STC8G 维持实验性标识，不宣称协议验收。EEPROM 文件单独检查容量与 SHA-256，预览后变化会在启动前被拒绝。
+
+AT89S51/S52 使用 AVRDUDE 8.1 的精确 ID `89S51` / `89S52`，界面不提供 AVR 熔丝或 Arduino Bootloader，提示正极性 RST 和 8051 编程器条件。AT89C51/C52 使用 MiniPro 的封装设备名，默认保留 ID 检查和写后校验。ATmega8 / 16 / 32 不提供不存在的扩展熔丝。
+
+新增 OpenOCD / stm32flash / MiniPro 的命令测试只验证本应用的适配契约，尚未执行这些外部 CLI。OpenOCD 固定脚本、拒绝危险 Tcl 路径字符；stm32flash 仅接 BIN，通过 `-S` 限定地址范围，`-e 0` 在范围参数之前；MiniPro 不传忽略 ID 或电压修改参数。擦除仍以页 / 扇区或器件为单位，应用不会承诺同页数据保留。
 
 STM32 根据精确配置区分接口：F103C8 不提供 ROM USB DFU，F401CC 可选 DFU。UR 需要 HWrst，探针序列号和索引不同时下发。AVR 串口 Bootloader 不提供本版 EEPROM / 熔丝写入。ESP 地址范围以所选 Flash 容量检查。
 
@@ -37,13 +44,13 @@ v0.2.1 加入各页及分组重置：基本页恢复时清空文件 / 端口并�
 
 经典 ESP32 额外使用真实 esptool，通过本地 TCP 与有限 ROM 协议替身通信。既有协议用例和新增的程序生成配置命令都实际执行。测试使用 no-stub / no-reset 模式，覆盖 SLIP、握手、块写入与 MD5；不覆盖 RAM stub、USB、硬件复位、CPU 指令执行、Flash 时序或固件运行，也不能推定 C3 / S3 已通过协议验收。
 
-实际发行包的 `--self-test` 会启动完整 Qt 界面并依次演练 ESP、STM32、AVR、STC，含 EEPROM 和 STC 硬件项，输出 JSON 与各配置页截图。普通流程不访问真实串口，生产界面拒绝网络串口输入。
+实际发行包的 `--self-test` 会启动完整 Qt 界面，覆盖 7 类工具的 10 个代表配置，含 AT89S、AT89C、STC89 / 15 / 8、EEPROM 和 STC 硬件项，输出 JSON 与各配置页截图。自检执行的是内置虚拟子进程，不是外部烧录 CLI。普通流程不访问真实串口，生产界面拒绝网络串口输入。
 
 ## 尚待完成
 
-- STM32CubeProgrammer、AVRDUDE 的本机实际 CLI 联调与版本验证。本次核对官方 / 上游接口并测试命令，但这两个外部程序未安装、未执行。
+- STM32CubeProgrammer、AVRDUDE、OpenOCD、stm32flash、MiniPro 的本机实际 CLI 联调与版本验证。本次核对官方 / 上游接口并测试应用端命令，但这 5 个外部程序未安装、未执行。
 - 全部芯片的接线、电压、驱动、实际擦写 / EEPROM / 熔丝 / 硬件选项的效果，以及掉电恢复和最终程序启动。
 - STM32 / STC 精确目标料号的强制比对；目前需人工核对后端日志。Bootloader 和分区保留区不由应用判断。
-- STC 独立 Flash 读回、STM32 Option Bytes / OTP / 读保护、AVR 锁定位及高压恢复。这些界面未假装提供。
+- STC 独立 Flash 读回、动态 EEPROM 重分区、STM32 Option Bytes / OTP / 读保护、AVR 锁定位及高压恢复、stm32flash 的 HEX 适配。这些功能未接入。
 
 所有报告的 `hardware_acceptance` 保持 false；真实工具零退出码表示工具执行完成，不自动认定实物验收通过。参数来源和适配限制见 `configuration-sources.md`。

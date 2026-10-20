@@ -11,8 +11,8 @@ from pathlib import Path
 
 from intelhex import IntelHex
 
-from .catalog import Profile
-from .options import OptionError, STC_HARDWARE, flash_capacity, needs_serial, normalize_options
+from .catalog import Profile, TOOL_EXECUTABLES, stc_protocol
+from .options import OptionError, stc_hardware, flash_capacity, needs_serial, normalize_options
 
 
 class ValidationError(ValueError):
@@ -34,8 +34,10 @@ def inspect_firmware(path: str) -> Firmware:
     if not file.is_file():
         raise ValidationError("请选择一个存在的固件文件。")
     fmt = file.suffix.lower()
+    if fmt in (".ihx", ".ihex"):
+        fmt = ".hex"
     if fmt not in (".bin", ".hex"):
-        raise ValidationError("仅支持 BIN 和 Intel HEX 文件。")
+        raise ValidationError("仅支持 BIN 和 Intel HEX（.hex / .ihx / .ihex）文件。")
     if file.stat().st_size > 64 * 1024**2:
         raise ValidationError("文件超过本版 64 MB 的检查上限。")
     data = file.read_bytes()
@@ -102,7 +104,7 @@ def tool_command(key: str, overrides: dict[str, str]) -> list[str]:
         if getattr(sys, "frozen", False):
             return [sys.executable, "--tool", key]
         return [sys.executable, "-m", key]
-    name = {"stm32cube": "STM32_Programmer_CLI", "avrdude": "avrdude"}[key]
+    name = TOOL_EXECUTABLES[key]
     found = shutil.which(name)
     if not found and key == "stm32cube":
         candidate = Path("C:/Program Files/STMicroelectronics/STM32Cube/STM32CubeProgrammer/bin/STM32_Programmer_CLI.exe")
@@ -132,12 +134,16 @@ def make_plan(request: Request, overrides: dict[str, str] | None = None, *, requ
     if fw.format == ".bin":
         if request.address < p.base or request.address + fw.end > p.base + capacity:
             raise ValidationError("固件和起始地址超出所选芯片配置的 Flash 范围。")
-        if p.tool in ("stcgal", "avrdude") and request.address != 0:
-            raise ValidationError("STC 和 AVR 的 BIN 文件必须从地址 0 写入。")
+        if p.tool in ("stcgal", "avrdude", "minipro") and request.address != 0:
+            raise ValidationError("STC、AVR 和 MiniPro 的 BIN 文件必须从地址 0 写入。")
     elif fw.start < p.base or fw.end > p.base + capacity:
         raise ValidationError("HEX 中的地址超出所选芯片配置的 Flash 范围。")
     if p.tool == "stcgal" and fw.format == ".hex" and fw.start != 0:
         raise ValidationError("STC 的 HEX 代码必须从地址 0 开始，避免 stcgal 重定位数据。")
+    if p.tool == "stcgal" and fw.format == ".hex" and Path(fw.path).suffix not in (".hex", ".ihx", ".ihex"):
+        raise ValidationError("stcgal 区分扩展名大小写，请将 Intel HEX 扩展名改为小写 .hex / .ihx / .ihex。")
+    if p.tool == "minipro" and fw.format == ".hex" and fw.start != 0:
+        raise ValidationError("MiniPro 的 HEX 必须从地址 0 开始；本版不使用偏移重定位。")
     ee = request.eeprom
     if ee is not None:
         if not p.eeprom_capacity:
@@ -146,13 +152,15 @@ def make_plan(request: Request, overrides: dict[str, str] | None = None, *, requ
             raise ValidationError(f"EEPROM 数据超出容量 {p.eeprom_capacity} 字节。")
         if p.tool == "stcgal" and ee.start != 0:
             raise ValidationError("STC EEPROM 文件必须从地址 0 开始。")
+        if p.tool == "stcgal" and ee.format == ".hex" and Path(ee.path).suffix not in (".hex", ".ihx", ".ihex"):
+            raise ValidationError("stcgal EEPROM 的 Intel HEX 扩展名必须小写。")
         if p.tool == "avrdude" and opts["programmer"] in ("arduino", "wiring"):
             raise ValidationError("本版串口 Bootloader 不支持 EEPROM 文件，请使用 ISP 或清空 EEPROM。")
     if needs_serial(p, opts) and require_port:
         if not re.fullmatch(r"COM[1-9][0-9]*|/dev/[A-Za-z0-9_./-]+", request.port):
             raise ValidationError("请选择真实串口，例如 COM3；真实模式不接受网络串口。")
     cmd = tool_command(p.tool, overrides or {}) if resolve_tool else [
-        {"esptool": "esptool", "stm32cube": "STM32_Programmer_CLI.exe", "avrdude": "avrdude.exe", "stcgal": "stcgal"}[p.tool]]
+        TOOL_EXECUTABLES[p.tool] + ".exe" if p.tool in TOOL_EXECUTABLES else p.tool]
     file = fw.path
     if p.tool == "esptool":
         cmd += ["--chip", p.chip, "--port", request.port, "--baud", str(request.baud),
@@ -188,7 +196,7 @@ def make_plan(request: Request, overrides: dict[str, str] | None = None, *, requ
     elif p.tool == "avrdude":
         fmt = "i" if fw.format == ".hex" else "r"
         cmd += ["-p", p.chip, "-c", opts["programmer"]]
-        if opts["programmer"] in ("arduino", "wiring"):
+        if opts["programmer"] in ("arduino", "wiring", "avrisp"):
             cmd += ["-P", request.port, "-b", str(request.baud)]
         elif opts["bitclock"] != "auto":
             cmd += ["-B", opts["bitclock"]]
@@ -202,17 +210,20 @@ def make_plan(request: Request, overrides: dict[str, str] | None = None, *, requ
         if ee:
             cmd += ["-U", f"eeprom:w:{ee.path}:{'i' if ee.format == '.hex' else 'r'}"]
         for key in ("lfuse", "hfuse", "efuse"):
-            if opts[key]:
+            if opts.get(key):
                 cmd += ["-U", f"{key}:w:{opts[key]}:m"]
                 warnings.append(f"将写入 {key}={opts[key]}，错误熔丝可能使 ISP / 时钟不可用。")
         verification = "AVRDUDE 默认写入后读回校验" if opts["verify"] else "用户关闭了读回校验 (-V)"
-    else:
-        cmd += ["-P", "stc89", "-p", request.port, "-b", str(request.baud), "-l", str(opts["handshake_baud"])]
+    elif p.tool == "stcgal":
+        cmd += ["-P", stc_protocol(p), "-p", request.port, "-b", str(request.baud), "-l", str(opts["handshake_baud"])]
+        if opts.get("trim_frequency"):
+            cmd += ["-t", str(opts["trim_frequency"])]
+            warnings.append(f"将校准内部 RC 至 {opts['trim_frequency']} kHz，请核对目标频率与芯片规格。")
         if opts["autoreset"]:
             cmd += ["-a", "-A", opts["resetpin"]]
         if opts["debug"]:
             cmd += ["-D"]
-        for setting in STC_HARDWARE:
+        for setting in stc_hardware(p):
             if opts[setting.key] != "keep":
                 cmd += ["-o", f"{setting.key}={opts[setting.key]}"]
                 warnings.append(f"STC 硬件设置：{setting.label} = {opts[setting.key]}。")
@@ -220,6 +231,64 @@ def make_plan(request: Request, overrides: dict[str, str] | None = None, *, requ
         if ee:
             cmd += [ee.path]
         verification = "stcgal 协议传输检查；本版未提供独立 Flash 读回校验"
+    elif p.tool == "openocd":
+        if fw.format == ".hex" and Path(file).suffix.lower() != ".hex":
+            raise ValidationError("OpenOCD 按扩展名识别镜像，请将 Intel HEX 文件扩展名改为 .hex 后重试。")
+        # OpenOCD program evaluates a nested Tcl list. Limit paths before bracing.
+        tcl_path = Path(file).as_posix()
+        if any(c in tcl_path for c in '{}[]$;\r\n"'):
+            raise ValidationError("OpenOCD 固件路径不能含 Tcl 特殊字符（花括号、方括号、$、分号或引号）；请移动文件后重试。")
+        cmd += ["-f", f"interface/{opts['adapter']}.cfg", "-c",
+                "transport select " + ("hla_swd" if opts["adapter"] == "stlink" else "swd"),
+                "-f", p.target_config, "-c", f"adapter speed {opts['frequency']}"]
+        if opts["probe_serial"]:
+            cmd += ["-c", f"adapter serial {opts['probe_serial']}"]
+        for service in ("gdb", "tcl", "telnet"):
+            cmd += ["-c", f"{service}_port disabled"]
+        program = f"program {{{tcl_path}}}"
+        if opts["verify"]:
+            program += " verify"
+        if opts["reset_after"]:
+            program += " reset"
+        program += " exit"
+        if fw.format == ".bin":
+            program += f" {hex(request.address)}"
+        cmd += ["-c", program]
+        warnings.append("OpenOCD 擦除固件涉及的整个 Flash 扇区，同扇区其他数据可能被清除。")
+        verification = "OpenOCD verify_image 读回校验" if opts["verify"] else "用户关闭了读回校验"
+    elif p.tool == "stm32flash":
+        start = fw.start if fw.format == ".hex" else request.address
+        length = fw.end - fw.start if fw.format == ".hex" else fw.end
+        if start % 4:
+            raise ValidationError("stm32flash 写入起始地址必须按 4 字节对齐。")
+        cmd += ["-b", str(request.baud), "-m", opts["serial_mode"], "-n", str(opts["retries"])]
+        # -e 0 must precede -S: upstream rejects -e after an address range.
+        if opts["erase_policy"] == "none":
+            cmd += ["-e", "0"]
+            warnings.append("不擦除模式要求目标区域已可写，否则写入或校验可能失败。")
+        cmd += ["-S", f"{hex(start)}:{length}", "-w", file]
+        if fw.format == ".bin":
+            cmd += ["-f"]
+        if opts["verify"]:
+            cmd += ["-v"]
+        if opts["run_after"]:
+            cmd += ["-g", "0"]
+            warnings.append("完成后从 Flash 基址启动；偏移应用需有效引导程序。")
+        cmd += [request.port]
+        warnings.append("stm32flash 按地址范围涉及的整页 / 扇区擦除；范围内 HEX 空洞由后端填充，同页其他数据不保留。")
+        verification = "stm32flash -v 读回校验" if opts["verify"] else "用户关闭了读回校验"
+    elif p.tool == "minipro":
+        if not opts["allow_short"] and fw.end != p.capacity:
+            raise ValidationError("关闭短固件支持时，镜像必须覆盖至芯片容量末尾。")
+        cmd += ["-p", opts["device_name"], "-w", file]
+        if opts["allow_short"]:
+            cmd += ["-s"]
+        if not opts["verify"]:
+            cmd += ["-v"]  # MiniPro -v disables verification, unlike stm32flash.
+        warnings.append("MiniPro 编程可能擦除整颗芯片；请先核对设备数据库、封装和芯片座方向。")
+        verification = "MiniPro 默认写后校验" if opts["verify"] else "用户关闭了读回校验 (-v)"
+    else:
+        raise ValidationError("未声明的烧录工具。")
     if opts.get("erase_all"):
         warnings.append("将先执行全片擦除，清除其他分区和数据。")
     if opts.get("verify") is False:
