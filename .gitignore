@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+.pytest_cache/
+build/
+dist/
+*.egg-info/
+*.spec
+docs/sample-reports/
+docs/configuration-smoke/
+docs/packaged-smoke/
+docs/references/
+docs/test-results.xml
+README-preview.html
+*.zip

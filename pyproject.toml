@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flashdesk"
+version = "0.2.1"
+description = "Unified MCU flashing workbench"
+requires-python = ">=3.11"
+dependencies = ["PySide6-Essentials==6.8.3", "pyserial==3.5", "intelhex==2.3.0", "esptool==5.1.0", "stcgal==1.10"]
+
+[project.optional-dependencies]
+dev = ["pytest==8.4.2", "pyinstaller==6.16.0"]
+
+[project.scripts]
+flashdesk = "flashdesk.app:main"
+
+[tool.setuptools.packages.find]
+include = ["flashdesk*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

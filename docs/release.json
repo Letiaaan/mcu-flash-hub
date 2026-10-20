@@ -1,0 +1,10 @@
+{
+  "version": "0.2.1",
+  "tests": 152,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "test_timestamp": "2026-10-20T14:38:03.291065+08:00",
+  "executable_sha256": "af29966cac42e9eb7d2a28b69d088d956af58bc0aaa09ee3a72287e618583907",
+  "hardware_acceptance": false
+}
