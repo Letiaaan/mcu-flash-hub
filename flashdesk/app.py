@@ -4,7 +4,7 @@ import json
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QSettings, QSignalBlocker, Qt, QTimer, QUrl
+from PySide6.QtCore import QSettings, QSignalBlocker, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QColor, QDesktopServices, QFont, QIcon, QPainter, QPixmap, QTextCursor
 from PySide6.QtWidgets import (
     QApplication, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFileDialog, QFormLayout,
@@ -20,6 +20,7 @@ from .runner import Runner, data_dir
 from .config_widget import ConfigWidget
 from .options import flash_capacity, needs_serial, normalize_options, schema
 from .presets import PresetError, PresetStore, read_preset, validate_preset, write_preset
+from .theme import THEME_CHOICES, THEME_KEY, configure_theme
 from . import __version__
 
 
@@ -55,6 +56,10 @@ QTabBar::tab { padding: 8px 18px; background: #E6EDF5; border: 1px solid #CFD9E4
 QTabBar::tab:selected { background: white; color: #175CD3; border-bottom-color: #175CD3; }
 QScrollArea { border: none; background: transparent; }
 """
+
+
+def configure_application(app, preference=None):
+    return configure_theme(app, STYLE, preference)
 
 
 def chip_icon() -> QIcon:
@@ -135,8 +140,12 @@ class SettingsDialog(QDialog):
 
 
 class Window(QMainWindow):
+    exit_requested = Signal()
+
     def __init__(self):
         super().__init__()
+        self._closing = False
+        self.appearance = configure_application(QApplication.instance())
         self.setWindowTitle("FlashDesk · 单片机烧录工作台")
         self.setWindowIcon(chip_icon())
         self.resize(1180, 940)
@@ -183,6 +192,14 @@ class Window(QMainWindow):
             self.profiles.addItem(item)
         self.profiles.currentItemChanged.connect(self.select_profile)
         side.addWidget(self.profiles, 1)
+        self.theme_combo = QComboBox()
+        for value, title in THEME_CHOICES:
+            self.theme_combo.addItem(title, value)
+        self.theme_combo.setCurrentIndex(self.theme_combo.findData(self.appearance.preference))
+        self.theme_combo.setToolTip("选择统一的界面配色；跟随系统会实时响应系统主题切换。")
+        self.theme_combo.currentIndexChanged.connect(self.change_theme)
+        self.appearance.preference_changed.connect(self.sync_theme_selection)
+        side.addWidget(self.theme_combo)
         self.settings_button = QPushButton("工具设置")
         self.settings_button.clicked.connect(self.edit_settings)
         side.addWidget(self.settings_button)
@@ -372,6 +389,15 @@ class Window(QMainWindow):
         self.profiles.setCurrentRow(0)
         self.refresh_ports()
         self.refresh_presets()
+
+    def change_theme(self, *_):
+        preference = self.theme_combo.currentData()
+        self.appearance.set_preference(preference)
+        self.settings.setValue(THEME_KEY, preference)
+
+    def sync_theme_selection(self, preference):
+        with QSignalBlocker(self.theme_combo):
+            self.theme_combo.setCurrentIndex(self.theme_combo.findData(preference))
 
     def invalidate_preview(self, *_):
         self.command.clear()
@@ -697,18 +723,46 @@ class Window(QMainWindow):
                 QMessageBox.warning(self, "导出失败", str(exc))
 
     def closeEvent(self, event):
-        if self.runner.busy:
-            QMessageBox.information(self, "任务执行中", "请先取消任务，等待工具停止后再关闭窗口。")
+        if self._closing:
             event.ignore()
-        else:
+            return
+        self._closing = True
+        try:
+            if self.runner.busy:
+                self.status.setText("正在停止任务并退出…")
+            if not self.runner.shutdown():
+                self.status.setText("工具进程尚未停止，请再次关闭以重试退出")
+                event.ignore()
+                return
+            for dialog in self.findChildren(QDialog):
+                dialog.reject()
             event.accept()
+            self.exit_requested.emit()
+        finally:
+            self._closing = False
+
+
+def run_window(app, window):
+    """The main window owns application lifetime, including auxiliary dialogs."""
+    previous_quit_policy = app.quitOnLastWindowClosed()
+    app.setQuitOnLastWindowClosed(False)
+    quit_handler = lambda: app.quit()
+    shutdown_handler = window.runner.shutdown
+    window.exit_requested.connect(quit_handler)
+    app.aboutToQuit.connect(shutdown_handler)
+    try:
+        window.show()
+        return app.exec()
+    finally:
+        window.runner.shutdown()
+        window.exit_requested.disconnect(quit_handler)
+        app.aboutToQuit.disconnect(shutdown_handler)
+        app.setQuitOnLastWindowClosed(previous_quit_policy)
 
 
 def main():
     app = QApplication(sys.argv)
-    app.setStyle("Fusion")
-    app.setStyleSheet(STYLE)
+    configure_application(app)
     app.setWindowIcon(chip_icon())
     window = Window()
-    window.show()
-    return app.exec()
+    return run_window(app, window)

@@ -46,6 +46,10 @@ def test_clean_source_installs_and_runs_full_gui_selftest(clean_source):
     assert gui.returncode == 0, gui.stdout + gui.stderr
     evidence = json.loads((clean_source / "evidence" / "self-test.json").read_text(encoding="utf-8"))
     assert evidence["passed"] and len(evidence["runs"]) == 10 and not evidence["hardware_acceptance"]
+    from process_check import is_running
+    for check in evidence["shutdown"]:
+        assert check["exit_code"] == 0 and check["stopped"] and not check["visible"]
+        assert not any(is_running(pid) for pid in check["child_pids"])
     second = invoke_source(clean_source, "-CheckOnly")
     assert second.returncode == 0, second.stdout + second.stderr
     assert "Installing dependencies" not in second.stdout

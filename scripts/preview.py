@@ -9,14 +9,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from PySide6.QtCore import QEventLoop, QTimer
 from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QFontDatabase
-from flashdesk.app import STYLE, Window
+from flashdesk.app import configure_application, Window
 
 root = Path(__file__).resolve().parents[1]
 app = QApplication([])
 for font in ("msyh.ttc", "msyhbd.ttc", "consola.ttf"):
     QFontDatabase.addApplicationFont("C:/Windows/Fonts/" + font)
-app.setStyle("Fusion")
-app.setStyleSheet(STYLE)
+configure_application(app, "light")
 window = Window()
 window.runner.report_dir = root / "docs" / "sample-reports"
 window.file.setText(str(root / "examples" / "演练固件.bin"))

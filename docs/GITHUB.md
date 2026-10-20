@@ -33,7 +33,7 @@
 <h1 align="center">FlashDesk</h1>
 <p align="center">单片机烧录工作台</p>
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.3.0-175CD3?style=flat-square" alt="Version 0.3.0">
+  <img src="https://img.shields.io/badge/version-0.3.2-175CD3?style=flat-square" alt="Version 0.3.2">
   <img src="https://img.shields.io/badge/status-preview-D69E2E?style=flat-square" alt="Preview">
 </p>
 ```
@@ -54,7 +54,7 @@
 
 源码仓库没有 `dist/` 是正常的。源码更新通过 GitHub Desktop 的 Commit / Push 发布；可直接运行的程序通过 Releases 单独发布，二者分别更新。
 
-1. 本机构建并完成测试后，把整个 `dist/FlashDesk/` 文件夹压缩成 `FlashDesk-v0.3.0-windows-x64.zip`，保留里面的 `_internal`、`examples`、`third-party`、文档等配套文件。
+1. 本机构建并完成测试后，把整个 `dist/FlashDesk/` 文件夹压缩成 `FlashDesk-v0.3.2-windows-x64.zip`，保留里面的 `_internal`、`examples`、`third-party`、文档等配套文件。
 2. 打开 GitHub 仓库 → 右侧 **Releases** → **Create a new release**，创建对应版本标签，填写更新内容。
 3. 将程序 ZIP 拖到附件区域，再发布 Release。GitHub 自动生成的 `Source code (zip)` / `Source code (tar.gz)` 仍是源码，不是程序。
 4. 用户选择你上传的 Windows ZIP，解压运行 `FlashDesk.exe`。只想使用软件的人无需安装 Python；开发者克隆源码后通过 `启动工作台.cmd` 初始化依赖。

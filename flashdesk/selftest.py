@@ -4,19 +4,69 @@ import os
 from pathlib import Path
 
 
+def shutdown_checks(app, output, first_window):
+    """Run the actual application event loop and close its primary window."""
+    from PySide6.QtCore import QProcess, QTimer
+    from .app import SettingsDialog, Window, run_window
+
+    checks = []
+    for mode in ("idle", "starting", "running", "settings"):
+        window = first_window if mode == "idle" else Window()
+        window.runner.report_dir = output / "shutdown-runs" / mode
+        child_pids = []
+        dialogs = []
+
+        def close_running():
+            child_pids.append(int(window.runner.process.processId()))
+            QTimer.singleShot(30, window.close)
+
+        def begin():
+            if mode in ("starting", "running"):
+                window.load_example()
+                window.scenario.setCurrentIndex(window.scenario.findData("timeout"))
+                if mode == "running":
+                    window.runner.process.started.connect(close_running)
+                window.start()
+                if mode == "starting":
+                    window.close()
+            else:
+                if mode == "settings":
+                    dialog = SettingsDialog({}, window)
+                    dialogs.append(dialog)
+                    dialog.show()
+                window.close()
+
+        def abort():
+            window.runner.shutdown(grace_ms=0)
+            app.exit(99)
+
+        watchdog = QTimer()
+        watchdog.setSingleShot(True)
+        watchdog.timeout.connect(abort)
+        watchdog.start(10000)
+        QTimer.singleShot(0, begin)
+        code = run_window(app, window)
+        watchdog.stop()
+        stopped = window.runner.process.state() == QProcess.ProcessState.NotRunning
+        result = window.last_report.get("result") if window.last_report else None
+        checks.append({"mode": mode, "exit_code": code, "child_pids": child_pids,
+                       "stopped": stopped, "visible": window.isVisible(), "result": result,
+                       "dialogs_closed": all(not d.isVisible() for d in dialogs)})
+    return checks
+
+
 def run(output_dir: str) -> int:
     os.environ["QT_QPA_PLATFORM"] = "offscreen"
     from PySide6.QtCore import QEventLoop, QTimer
     from PySide6.QtGui import QFontDatabase
     from PySide6.QtWidgets import QApplication
-    from .app import STYLE, Window
+    from .app import configure_application, Window
     from .catalog import PROFILES
 
     output = Path(output_dir).resolve()
     output.mkdir(parents=True, exist_ok=True)
     app = QApplication([])
-    app.setStyle("Fusion")
-    app.setStyleSheet(STYLE)
+    configure_application(app)
     for font in ("msyh.ttc", "msyhbd.ttc", "consola.ttf"):
         QFontDatabase.addApplicationFont("C:/Windows/Fonts/" + font)
     window = Window()
@@ -64,9 +114,21 @@ def run(output_dir: str) -> int:
     success = all(r.get("result") == "success" and r.get("mode") == "virtual" and
                   "内存读回校验通过" in r.get("log", "") for r in results)
     success = success and window.start_button.isEnabled() and window.export_button.isEnabled()
+    themes = {}
+    from PySide6.QtGui import QPalette
+    for theme in ("light", "dark"):
+        configure_application(app, theme)
+        app.processEvents()
+        window.grab().save(str(output / f"preview-theme-{theme}.png"))
+        themes[theme] = window.tabs.widget(0).widget().palette().color(QPalette.ColorRole.Window).name()
+    success = success and themes == {"light": "#f0f4f8", "dark": "#141c27"}
+    shutdown = shutdown_checks(app, output, window)
+    success = success and all(c["exit_code"] == 0 and c["stopped"] and not c["visible"] and c["dialogs_closed"]
+                              and (c["result"] == "cancelled" if c["mode"] in ("starting", "running") else True)
+                              for c in shutdown)
     summary = {"passed": success, "mode": "virtual", "hardware_acceptance": False,
-               "run": results[0], "runs": results, "screenshot": str(output / "preview.png")}
+               "run": results[0], "runs": results, "themes": themes, "shutdown": shutdown,
+               "screenshot": str(output / "preview.png")}
     (output / "self-test.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
-    window.close()
     print(json.dumps({"passed": success, "report": str(output / "self-test.json")}, ensure_ascii=False))
     return 0 if success else 1

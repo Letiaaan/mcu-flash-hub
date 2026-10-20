@@ -72,6 +72,12 @@ def test_actual_packaged_gui_and_child(tmp_path):
     result = json.loads((tmp_path / "self-test.json").read_text(encoding="utf-8"))
     assert result["passed"] is True and result["mode"] == "virtual"
     assert len(result["runs"]) == 10
+    assert result["themes"] == {"light": "#f0f4f8", "dark": "#141c27"}
+    assert {check["mode"] for check in result["shutdown"]} == {"idle", "starting", "running", "settings"}
+    from process_check import is_running
+    for check in result["shutdown"]:
+        assert check["stopped"] and not check["visible"] and check["dialogs_closed"]
+        assert not any(is_running(pid) for pid in check["child_pids"])
     assert {r["plan"]["request"]["profile"]["tool"] for r in result["runs"]} == {
         "esptool", "stm32cube", "avrdude", "stcgal", "openocd", "stm32flash", "minipro"}
     stc = next(r for r in result["runs"] if r["plan"]["request"]["profile"]["id"] == "stc89c52rc")

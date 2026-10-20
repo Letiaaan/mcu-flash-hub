@@ -9,15 +9,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from PySide6.QtGui import QFontDatabase
 from PySide6.QtWidgets import QApplication
 from markdown_it import MarkdownIt
-from flashdesk.app import STYLE, Window
+from flashdesk.app import configure_application, Window
 from flashdesk.catalog import PROFILES
 
 root = Path(__file__).resolve().parents[1]
 images = root / "docs" / "images"
 images.mkdir(parents=True, exist_ok=True)
 app = QApplication([])
-app.setStyle("Fusion")
-app.setStyleSheet(STYLE)
+configure_application(app, "light")
 for font in ("msyh.ttc", "msyhbd.ttc", "consola.ttf"):
     QFontDatabase.addApplicationFont("C:/Windows/Fonts/" + font)
 window = Window()
@@ -47,6 +46,9 @@ window.advanced_scroll.ensureWidgetVisible(header, 0, 0)
 window.advanced_scroll.verticalScrollBar().setValue(max(0, header.y() - 12))
 app.processEvents()
 window.grab().save(str(images / "stc15-settings.png"))
+configure_application(app, "dark")
+app.processEvents()
+window.grab().save(str(images / "dark-theme.png"))
 window.close()
 
 md = MarkdownIt("commonmark", {"html": True}).enable("table")

@@ -1,14 +1,20 @@
 {
-  "version": "0.3.0",
-  "tests": 352,
+  "version": "0.3.2",
+  "tests": 366,
   "failures": 0,
   "errors": 0,
   "skipped": 0,
-  "test_timestamp": "2026-10-20T22:44:33.596714+08:00",
-  "executable_sha256": "508961d19b56576e9b41fee095f0b14bbc769c6fddf578f9c10be5266fd444b8",
+  "test_timestamp": "2026-10-20T23:36:32.682662+08:00",
+  "executable_sha256": "2e3fbc9f06e2114dea69dc7bacd18afe9bbaf7078a2363cc30a497d4e4914e42",
   "hardware_acceptance": false,
   "profile_count": 32,
   "tool_count": 7,
   "profiles_8051": 14,
-  "external_cli_acceptance": false
+  "external_cli_acceptance": false,
+  "themes": [
+    "light",
+    "dark",
+    "system"
+  ],
+  "close_main_window_exits": true
 }

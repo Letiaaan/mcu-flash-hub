@@ -21,6 +21,8 @@ inventory = {
     "test_timestamp": suite.get("timestamp"), "executable_sha256": digest, "hardware_acceptance": False,
     "profile_count": len(PROFILES), "tool_count": len(TOOL_LABELS), "profiles_8051": sum(is_8051(p) for p in PROFILES),
     "external_cli_acceptance": False,
+    "themes": ["light", "dark", "system"],
+    "close_main_window_exits": True,
 }
 (ROOT / "docs" / "release.json").write_text(json.dumps(inventory, ensure_ascii=False, indent=2), encoding="utf-8")
 groups = (
@@ -34,6 +36,8 @@ groups = (
     ("test_esptool_protocol", "真实 esptool / 虚拟 ROM", "SLIP、写入、MD5、损坏数据与错误芯片"),
     ("test_package", "实际发行包", "内置工具、真实 esptool 协议、子进程故障与取消、覆盖 7 类工具 / 10 个代表配置、EEPROM、STC89 / 15 / 8 选项的界面自检"),
     ("test_source_startup", "干净源码首次启动", "无 EXE / 无虚拟环境的中文及空格目录，从零安装依赖、Qt 和 10 配置界面自检、再次启动复用环境、安装错误及日志"),
+    ("test_theme", "统一主题", "深色初始调色板、浅色 / 深色两页实际渲染与工具设置、系统主题信号、偏好保存、配置保持和文字对比度"),
+    ("test_shutdown", "完整退出", "主窗口关闭信号、设置弹窗关闭、启动中 / 执行中的子进程终止、取消报告、计时器停止和重复清理"),
 )
 rows = "\n".join(f"| {label} | {counts['tests.' + key]} | {details} |" for key, label, details in groups)
 document = f"""# FlashDesk v{__version__} 验收记录
@@ -70,6 +74,8 @@ v0.2.1 加入各页及分组重置：基本页恢复时清空文件 / 端口并�
 
 ## 虚拟验收的边界
 
+界面增加浅色 / 深色 / 跟随系统，默认跟随系统；主题选择保存在应用外观设置，不进入烧录方案。测试向 Qt 注入深色初始调色板和系统主题变化信号，检查浅色 / 深色的实际渲染背景、表单、工具设置、文字对比度和偏好保存。发行包自检额外输出两种主题的截图与调色板值。自动测试没有操作 Windows 设置页面实际切换系统主题。
+
 普通虚拟演练使用独立进程和有限 Flash / EEPROM 内存模型，按 BIN 地址或 HEX 段写入并计算哈希；故障场景会改变数据或返回错误。STC 配置寄存器模型调用上游 setter，但初始值只是模型值，并非从芯片读回。AVR 熔丝只记录模型字节，不模拟电气或时钟。演练为了自检始终核对内存，即使真实配置选择关闭校验，也不代表真实工具会进行校验。
 
 经典 ESP32 额外使用真实 esptool，通过本地 TCP 与有限 ROM 协议替身通信。既有协议用例和新增的程序生成配置命令都实际执行。测试使用 no-stub / no-reset 模式，覆盖 SLIP、握手、块写入与 MD5；不覆盖 RAM stub、USB、硬件复位、CPU 指令执行、Flash 时序或固件运行，也不能推定 C3 / S3 已通过协议验收。
@@ -77,6 +83,8 @@ v0.2.1 加入各页及分组重置：基本页恢复时清空文件 / 端口并�
 实际发行包的 `--self-test` 会启动完整 Qt 界面，覆盖 7 类工具的 10 个代表配置，含 AT89S、AT89C、STC89 / 15 / 8、EEPROM 和 STC 硬件项，输出 JSON 与各配置页截图。自检执行的是内置虚拟子进程，不是外部烧录 CLI。普通流程不访问真实串口，生产界面拒绝网络串口输入。
 
 ## 源码首次启动
+
+主窗口关闭现在明确触发整个应用退出。关闭前同步停止当前工具，先请求结束、必要时强制结束，完成取消报告写入；应用 aboutToQuit 和事件循环结束路径另有兜底清理。源码和实际 EXE 自检都进入真实 QApplication 事件循环，验证空闲、子进程启动中、执行中和工具设置打开时的关闭；宿主测试等候父进程退出，并查询记录的子进程 PID，确认测试工具不再运行。测试没有对真实芯片进行烧录。
 
 源码启动用例使用不含 `.venv` / `dist` 的独立副本，目录包含中文、空格及 `&`。通过实际 CMD / Windows PowerShell 5.1 启动器创建新虚拟环境、经 pip 安装依赖，再用新解释器完成 Qt 界面与 10 个配置的虚拟自检；第二次检查复用已有环境。失败用例验证错误退出码、控制台提示及 `startup.log` 中的安装详情，不依赖开发目录的 EXE 或虚拟环境。
 

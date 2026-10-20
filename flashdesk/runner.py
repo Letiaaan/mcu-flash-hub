@@ -82,6 +82,29 @@ class Runner(QObject):
             self.process.terminate()
             self.kill_timer.start(1500)
 
+    def shutdown(self, grace_ms: int = 300, kill_ms: int = 1700) -> bool:
+        """Stop this runner's child and persist its result before the GUI exits."""
+        self.timer.stop()
+        self.kill_timer.stop()
+        if self.busy and not self.stop_reason:
+            self.stop_reason = "cancelled"
+            self._append("\n主界面关闭，正在停止工具并退出；真实设备可能需要重新烧录。\n")
+        if self.process.state() == QProcess.ProcessState.Starting:
+            self.process.waitForStarted(grace_ms)
+        if self.process.state() != QProcess.ProcessState.NotRunning:
+            self.process.terminate()
+            self.process.waitForFinished(grace_ms)
+        if self.process.state() != QProcess.ProcessState.NotRunning:
+            self.process.kill()
+            self.process.waitForFinished(kill_ms)
+        stopped = self.process.state() == QProcess.ProcessState.NotRunning
+        if stopped and self.busy:
+            # Failed starts do not always emit finished; keep the audit record complete.
+            self._read()
+            self._append(self.decoder.decode(b"", final=True))
+            self._complete(self.process.exitCode(), self.stop_reason or "cancelled")
+        return stopped
+
     def _timeout(self):
         if self.busy:
             self.stop_reason = "timeout"

@@ -4,7 +4,7 @@
 <p align="center">整合成熟烧录工具，让芯片选择、参数配置、固件检查和任务记录在一个窗口里完成。</p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.3.0-175CD3?style=flat-square" alt="Version 0.3.0">
+  <img src="https://img.shields.io/badge/version-0.3.2-175CD3?style=flat-square" alt="Version 0.3.2">
   <img src="https://img.shields.io/badge/platform-Windows_x64-175CD3?style=flat-square" alt="Windows x64">
   <img src="https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&amp;logo=python&amp;logoColor=white" alt="Python 3.11">
   <img src="https://img.shields.io/badge/status-development_preview-D69E2E?style=flat-square" alt="Development preview">
@@ -22,10 +22,12 @@
 ## 一个工作台，多种芯片
 
 - **按芯片显示配置**：32 个烧录配置、7 类工具；ESP、STM32、AVR、51 / 8051 分类筛选，接口变化时自动调整字段。
+- **统一界面主题**：浅色、深色、跟随系统；选择自动保存，跟随系统实时响应主题变化。
 - **分区独立重置**：连接、Flash、写入、熔丝、STC 硬件选项可以分别恢复默认值。
 - **工程方案复用**：保存、更新、导入和导出配置；切换芯片保留当前窗口中的各自草稿。
 - **写入前检查**：BIN / Intel HEX（含 SDCC 的 IHX）、地址范围、HEX 校验和、固件指纹，以及独立 EEPROM 文件检查。
 - **过程可追溯**：命令预览、原始日志、取消、超时和任务报告。
+- **关闭即退出**：关闭主窗口时停止当前工具进程，保存取消记录后退出整个应用。
 - **没有开发板也能演练**：在内存模型中验证流程，并测试连接失败、校验失败和工具超时。
 
 ## 实际界面
@@ -43,6 +45,13 @@
 <summary>查看新增的 51 分类与 STC15 配置</summary>
 
 ![51 分类与 STC15 配置](docs/images/stc15-settings.png)
+
+</details>
+
+<details>
+<summary>查看深色模式</summary>
+
+![统一深色模式](docs/images/dark-theme.png)
 
 </details>
 
@@ -72,6 +81,8 @@
 第一次使用：保持「虚拟演练」勾选，点击「演练固件」，再点击「开始虚拟演练」。示例是测试数据，没有可执行功能，不应写入实物。
 
 选择真实固件后，可在芯片配置页调整参数。准备连接硬件时再切换真实模式，检查最终命令和确认窗口。
+
+关闭主窗口会退出程序。任务执行中关闭会中止任务，等待工具停止并保存报告后退出；真实设备可能需要重新烧录。
 
 ### 从源码运行
 
